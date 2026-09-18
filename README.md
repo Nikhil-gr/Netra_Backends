@@ -37,6 +37,9 @@ Real analysis requires a working Gemini key and internet access.
 | `GEMINI_API_KEY` | Required for analysis |
 | `GEMINI_MODEL` | `gemini-2.5-flash-lite`; must support image input and structured JSON |
 | `MONGODB_URI` | Example: `mongodb://127.0.0.1:27017/netra`; empty disables history |
+| `CLOUDINARY_CLOUD_NAME` | Required to store images with saved history |
+| `CLOUDINARY_API_KEY` | Cloudinary API key |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret; keep it on the backend |
 | `CORS_ORIGIN` | Comma-separated exact origins; defaults to `http://localhost:5173,http://127.0.0.1:5173` |
 
 For a phone demo, use your computer's LAN address in the frontend API URL and
@@ -96,7 +99,8 @@ Example response:
 
 With saving disabled, `historySaved` is false and `historyId` is null. When
 saving was requested but fails, analysis still succeeds and adds a
-`historyWarning` string. Photos and image bytes are never stored in history.
+`historyWarning` string. With saved history, the processed photo is stored in
+Cloudinary and MongoDB stores its URL and public ID instead of image bytes.
 
 Every mode returns `result.spokenResponse`. Other fields are:
 
@@ -154,8 +158,10 @@ user model: history is shared by all clients of this hackathon backend.
 Multer holds uploads in memory. Sharp checks the actual decoded format, rejects
 animated or over-50-megapixel images, applies EXIF rotation, fits within 1024 ×
 1024 without enlargement, and produces JPEG at quality 75 with metadata removed.
-Images go to Gemini inline and are never written to disk or MongoDB. Buffer
-references are released after each request.
+Images go to Gemini inline and are never written to local disk or MongoDB.
+When history is requested, the processed JPEG is uploaded to Cloudinary and its
+URL is stored with the MongoDB history record. Buffer references are released
+after each request.
 
 The official `@google/genai` SDK sends a separate system prompt and JSON schema
 per mode. The backend parses and validates returned fields, nested objects,

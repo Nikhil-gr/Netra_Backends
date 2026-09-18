@@ -6,6 +6,8 @@ const historySchema = new mongoose.Schema({
   query: { type: String, default: '', maxlength: 200 },
   language: { type: String, enum: ['en', 'ne'], default: 'en' },
   result: { type: mongoose.Schema.Types.Mixed, required: true },
+  imageUrl: { type: String, default: null },
+  imagePublicId: { type: String, default: null },
 }, {
   timestamps: { createdAt: true, updatedAt: false },
   versionKey: false,
