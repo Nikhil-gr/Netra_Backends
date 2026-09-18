@@ -15,4 +15,4 @@ export function getGeminiClient() {
   return client;
 }
 
-export const getGeminiModel = () => process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash-lite';
+export const getGeminiModel = () => process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash-lite';
