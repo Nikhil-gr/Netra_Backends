@@ -26,6 +26,7 @@ export default async function analyzeController(req, res) {
       visionAnalysisId: null,
     };
 
+    // Save general history only when explicitly requested.
     if (saveHistory) {
       if (isDatabaseConnected()) {
         let cloudImage;
@@ -41,12 +42,16 @@ export default async function analyzeController(req, res) {
           data.historySaved = true;
           data.historyId = record._id.toString();
           data.imageUrl = cloudImage.imageUrl;
-        } catch {
+        } catch (error) {
+          console.error("History save failed:", error);
           if (cloudImage?.imagePublicId) {
             try {
               await deleteImage(cloudImage.imagePublicId);
-            } catch {
-              console.warn("Could not remove an orphaned Cloudinary image.");
+            } catch (cleanupError) {
+              console.warn(
+                "Could not remove an orphaned Cloudinary image.",
+                cleanupError,
+              );
             }
           }
           data.historyWarning =
@@ -58,7 +63,8 @@ export default async function analyzeController(req, res) {
       }
     }
 
-    if (mode === "describe") {
+    // Only create a user-linked VisionAnalysis when a real userId was supplied.
+    if (mode === "describe" && userId) {
       if (isDatabaseConnected()) {
         try {
           const analysis = await VisionAnalysis.create({
@@ -68,7 +74,8 @@ export default async function analyzeController(req, res) {
           });
           data.visionAnalysisSaved = true;
           data.visionAnalysisId = analysis._id.toString();
-        } catch {
+        } catch (error) {
+          console.error("Vision analysis save failed:", error);
           data.visionAnalysisWarning =
             "Analysis succeeded, but it could not be linked to your account.";
         }

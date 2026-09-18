@@ -14,10 +14,15 @@ const origins = (
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const isNgrokOrigin = (origin) =>
+  !!origin && /^https:\/\/[a-z0-9-]+\.ngrok-free\.dev$/i.test(origin);
+
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || origins.includes(origin)) return callback(null, true);
+      if (!origin || origins.includes(origin) || isNgrokOrigin(origin)) {
+        return callback(null, true);
+      }
       callback(
         new ApiError(
           403,

@@ -48,19 +48,28 @@ export default function validateAnalyze(req, res, next) {
       "saveHistory must be true or false.",
     );
   }
+
   const { userId, journeyId } = req.body;
-  if (typeof userId !== "string" || !userId.trim()) {
-    throw new ApiError(400, "USER_ID_REQUIRED", "userId is required.");
+
+  // userId and journeyId are OPTIONAL - Netra supports anonymous use.
+  // When provided, they must still be well-formed Mongo ids.
+  let normalizedUserId = null;
+  if (typeof userId === "string" && userId.trim()) {
+    normalizedUserId = userId.trim();
+    requireObjectId(normalizedUserId);
   }
-  requireObjectId(userId);
-  if (journeyId !== undefined && journeyId !== "") {
-    requireObjectId(journeyId);
+
+  let normalizedJourneyId = null;
+  if (typeof journeyId === "string" && journeyId.trim()) {
+    normalizedJourneyId = journeyId.trim();
+    requireObjectId(normalizedJourneyId);
   }
+
   req.analysis = {
     ...fields,
     saveHistory: saveHistory === "true",
-    userId,
-    journeyId: journeyId || null,
+    userId: normalizedUserId,
+    journeyId: normalizedJourneyId,
   };
   next();
 }
