@@ -1,46 +1,152 @@
-import { MODES } from '../utils/buildPrompt.js';
-import { ApiError } from '../utils/apiResponse.js';
-import { requireObjectId } from '../utils/crudGuards.js';
+import { MODES } from "../utils/buildPrompt.js";
+import { ApiError } from "../utils/apiResponse.js";
+import { requireObjectId } from "../utils/crudGuards.js";
 
 export function validateAnalysisFields(body = {}) {
-  const { mode, query = '', language = 'en' } = body;
-  if (typeof mode !== 'string' || !MODES.includes(mode)) {
-    throw new ApiError(400, 'INVALID_MODE', 'mode must be describe, read, find, or assist.');
+  const {
+    mode,
+    query = "",
+    language = "en",
+  } = body;
+
+  if (
+    typeof mode !== "string" ||
+    !MODES.includes(mode)
+  ) {
+    throw new ApiError(
+      400,
+      "INVALID_MODE",
+      "mode must be describe, read, find, or assist."
+    );
   }
-  if (typeof query !== 'string' || query.length > 200) {
-    throw new ApiError(400, 'INVALID_QUERY', 'query must be text of at most 200 characters.');
+
+  if (
+    typeof query !== "string" ||
+    query.length > 200
+  ) {
+    throw new ApiError(
+      400,
+      "INVALID_QUERY",
+      "query must be text of at most 200 characters."
+    );
   }
-  if (mode === 'find' && !query.trim()) {
-    throw new ApiError(400, 'QUERY_REQUIRED', 'query is required in find mode.');
+
+  if (
+    mode === "find" &&
+    !query.trim()
+  ) {
+    throw new ApiError(
+      400,
+      "QUERY_REQUIRED",
+      "query is required in find mode."
+    );
   }
-  if (typeof language !== 'string' || !['en', 'ne'].includes(language)) {
-    throw new ApiError(400, 'INVALID_LANGUAGE', 'language must be en or ne.');
+
+  if (
+    typeof language !== "string" ||
+    !["en", "ne"].includes(language)
+  ) {
+    throw new ApiError(
+      400,
+      "INVALID_LANGUAGE",
+      "language must be en or ne."
+    );
   }
-  return { mode, query: query.trim(), language };
+
+  return {
+    mode,
+    query: query.trim(),
+    language,
+  };
 }
 
-export default function validateAnalyze(req, res, next) {
-  if (!req.file?.buffer?.length) {
-    throw new ApiError(400, 'IMAGE_REQUIRED', 'Upload one image using the image field.');
+export default function validateAnalyze(
+  req,
+  res,
+  next
+) {
+  if (
+    !req.file?.buffer?.length
+  ) {
+    throw new ApiError(
+      400,
+      "IMAGE_REQUIRED",
+      "Upload one image using the image field."
+    );
   }
-  const fields = validateAnalysisFields(req.body);
-  const saveHistory = req.body.saveHistory ?? 'true';
-  if (!['true', 'false'].includes(saveHistory)) {
-    throw new ApiError(400, 'INVALID_SAVE_HISTORY', 'saveHistory must be true or false.');
+
+  const fields =
+    validateAnalysisFields(
+      req.body
+    );
+
+  const saveHistory =
+    req.body.saveHistory ??
+    "true";
+
+  if (
+    !["true", "false"].includes(
+      saveHistory
+    )
+  ) {
+    throw new ApiError(
+      400,
+      "INVALID_SAVE_HISTORY",
+      "saveHistory must be true or false."
+    );
   }
-  const { userId, journeyId } = req.body;
-  if (typeof userId !== 'string' || !userId.trim()) {
-    throw new ApiError(400, 'USER_ID_REQUIRED', 'userId is required.');
+
+  const {
+    userId,
+    journeyId,
+  } = req.body;
+
+  let normalizedUserId =
+    null;
+
+  let normalizedJourneyId =
+    null;
+
+  // userId is OPTIONAL.
+  // Only validate it when provided.
+  if (
+    typeof userId === "string" &&
+    userId.trim()
+  ) {
+    normalizedUserId =
+      userId.trim();
+
+    requireObjectId(
+      normalizedUserId
+    );
   }
-  requireObjectId(userId);
-  if (journeyId !== undefined && journeyId !== '') {
-    requireObjectId(journeyId);
+
+  // journeyId is also OPTIONAL.
+  if (
+    typeof journeyId ===
+      "string" &&
+    journeyId.trim()
+  ) {
+    normalizedJourneyId =
+      journeyId.trim();
+
+    requireObjectId(
+      normalizedJourneyId
+    );
   }
+
   req.analysis = {
     ...fields,
-    saveHistory: saveHistory === 'true',
-    userId,
-    journeyId: journeyId || null,
+
+    saveHistory:
+      saveHistory === "true",
+
+    userId:
+      normalizedUserId,
+
+    journeyId:
+      normalizedJourneyId,
   };
+
   next();
 }
