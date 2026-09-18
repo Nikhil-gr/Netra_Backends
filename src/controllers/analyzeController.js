@@ -1,10 +1,10 @@
-import { processImage } from '../services/imageService.js';
-import { analyzeWithGemini } from '../services/geminiService.js';
-import { isDatabaseConnected } from '../config/db.js';
-import History from '../models/History.js';
-import VisionAnalysis from '../models/VisionAnalysis.js';
-import { successResponse } from '../utils/apiResponse.js';
-import { deleteImage, uploadImage } from '../services/cloudinaryService.js';
+import { processImage } from "../services/imageService.js";
+import { analyzeWithGemini } from "../services/geminiService.js";
+import { isDatabaseConnected } from "../config/db.js";
+import History from "../models/History.js";
+import VisionAnalysis from "../models/VisionAnalysis.js";
+import { successResponse } from "../utils/apiResponse.js";
+import { deleteImage, uploadImage } from "../services/cloudinaryService.js";
 
 export default async function analyzeController(req, res) {
   const { mode, query, language, saveHistory, userId, journeyId } = req.analysis;
@@ -15,9 +15,15 @@ export default async function analyzeController(req, res) {
     const result = await analyzeWithGemini(image, { mode, query, language });
 
     const data = {
-      mode, query, language, result,
-      historySaved: false, historyId: null, imageUrl: null,
-      visionAnalysisSaved: false, visionAnalysisId: null,
+      mode,
+      query,
+      language,
+      result,
+      historySaved: false,
+      historyId: null,
+      imageUrl: null,
+      visionAnalysisSaved: false,
+      visionAnalysisId: null,
     };
 
     if (saveHistory) {
@@ -25,7 +31,13 @@ export default async function analyzeController(req, res) {
         let cloudImage;
         try {
           cloudImage = await uploadImage(image);
-          const record = await History.create({ mode, query, language, result, ...cloudImage });
+          const record = await History.create({
+            mode,
+            query,
+            language,
+            result,
+            ...cloudImage,
+          });
           data.historySaved = true;
           data.historyId = record._id.toString();
           data.imageUrl = cloudImage.imageUrl;
@@ -34,17 +46,19 @@ export default async function analyzeController(req, res) {
             try {
               await deleteImage(cloudImage.imagePublicId);
             } catch {
-              console.warn('Could not remove an orphaned Cloudinary image.');
+              console.warn("Could not remove an orphaned Cloudinary image.");
             }
           }
-          data.historyWarning = 'Analysis succeeded, but its image and history could not be saved.';
+          data.historyWarning =
+            "Analysis succeeded, but its image and history could not be saved.";
         }
       } else {
-        data.historyWarning = 'Analysis succeeded, but the history database is unavailable.';
+        data.historyWarning =
+          "Analysis succeeded, but the history database is unavailable.";
       }
     }
 
-    if (mode === 'describe') {
+    if (mode === "describe") {
       if (isDatabaseConnected()) {
         try {
           const analysis = await VisionAnalysis.create({
@@ -55,10 +69,12 @@ export default async function analyzeController(req, res) {
           data.visionAnalysisSaved = true;
           data.visionAnalysisId = analysis._id.toString();
         } catch {
-          data.visionAnalysisWarning = 'Analysis succeeded, but it could not be linked to your account.';
+          data.visionAnalysisWarning =
+            "Analysis succeeded, but it could not be linked to your account.";
         }
       } else {
-        data.visionAnalysisWarning = 'Analysis succeeded, but the database is unavailable to link it to your account.';
+        data.visionAnalysisWarning =
+          "Analysis succeeded, but the database is unavailable to link it to your account.";
       }
     }
 
