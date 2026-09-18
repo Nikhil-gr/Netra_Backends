@@ -32,7 +32,7 @@ export async function geocodeLocation(locationName) {
   }
 
   const query = encodeURIComponent(locationName.trim());
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${query}`;
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=np&q=${query}`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
 

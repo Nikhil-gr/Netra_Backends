@@ -139,7 +139,7 @@ export async function searchDestinations(query) {
   const apiKey = requireApiKey();
   const url =
     `${ORS_GEOCODE_URL}?api_key=${apiKey}&` +
-    `text=${encodeURIComponent(query)}&size=5`;
+    `text=${encodeURIComponent(query)}&size=5&boundary.country=NP`;
 
   const response = await fetchWithTimeout(url);
 
