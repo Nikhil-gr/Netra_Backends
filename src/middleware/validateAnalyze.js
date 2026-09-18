@@ -1,5 +1,6 @@
 import { MODES } from '../utils/buildPrompt.js';
 import { ApiError } from '../utils/apiResponse.js';
+import { requireObjectId } from '../utils/crudGuards.js';
 
 export function validateAnalysisFields(body = {}) {
   const { mode, query = '', language = 'en' } = body;
@@ -27,6 +28,19 @@ export default function validateAnalyze(req, res, next) {
   if (!['true', 'false'].includes(saveHistory)) {
     throw new ApiError(400, 'INVALID_SAVE_HISTORY', 'saveHistory must be true or false.');
   }
-  req.analysis = { ...fields, saveHistory: saveHistory === 'true' };
+  const { userId, journeyId } = req.body;
+  if (typeof userId !== 'string' || !userId.trim()) {
+    throw new ApiError(400, 'USER_ID_REQUIRED', 'userId is required.');
+  }
+  requireObjectId(userId);
+  if (journeyId !== undefined && journeyId !== '') {
+    requireObjectId(journeyId);
+  }
+  req.analysis = {
+    ...fields,
+    saveHistory: saveHistory === 'true',
+    userId,
+    journeyId: journeyId || null,
+  };
   next();
 }
