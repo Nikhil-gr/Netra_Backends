@@ -43,6 +43,20 @@ export const guideLimiter = rateLimit({
     ),
 });
 
+export const navigationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler: (req, res) =>
+    errorResponse(
+      res,
+      429,
+      "NAVIGATION_RATE_LIMITED",
+      "Too many navigation requests. Try again in a minute.",
+    ),
+});
+
 export const crudLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 60,
