@@ -20,6 +20,15 @@ export default function errorHandler(error, req, res, next) {
   if (error.type === 'entity.parse.failed') {
     return errorResponse(res, 400, 'INVALID_JSON', 'The request body must be valid JSON.');
   }
+  if (error.code === 11000) {
+    return errorResponse(res, 409, 'DUPLICATE_VALUE', 'A record with that value already exists.');
+  }
+  if (error.name === 'ValidationError') {
+    return errorResponse(res, 400, 'VALIDATION_ERROR', 'The request body failed validation.');
+  }
+  if (error.name === 'CastError') {
+    return errorResponse(res, 400, 'INVALID_ID', 'The provided id is not a valid identifier.');
+  }
   console.error('An unexpected backend error occurred.');
   return errorResponse(res, 500, 'INTERNAL_ERROR', 'Something went wrong. Please try again.');
 }

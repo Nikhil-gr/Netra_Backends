@@ -16,3 +16,11 @@ export const historyLimiter = rateLimit({
   legacyHeaders: false,
   handler: (req, res) => errorResponse(res, 429, 'RATE_LIMITED', 'Too many history requests. Try again in a minute.'),
 });
+
+export const crudLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => errorResponse(res, 429, 'RATE_LIMITED', 'Too many requests. Try again in a minute.'),
+});
