@@ -3,150 +3,73 @@ import { ApiError } from "../utils/apiResponse.js";
 import { requireObjectId } from "../utils/crudGuards.js";
 
 export function validateAnalysisFields(body = {}) {
-  const {
-    mode,
-    query = "",
-    language = "en",
-  } = body;
-
-  if (
-    typeof mode !== "string" ||
-    !MODES.includes(mode)
-  ) {
+  const { mode, query = "", language = "en" } = body;
+  if (typeof mode !== "string" || !MODES.includes(mode)) {
     throw new ApiError(
       400,
       "INVALID_MODE",
-      "mode must be describe, read, find, or assist."
+      "mode must be describe, read, find, or assist.",
     );
   }
-
-  if (
-    typeof query !== "string" ||
-    query.length > 200
-  ) {
+  if (typeof query !== "string" || query.length > 200) {
     throw new ApiError(
       400,
       "INVALID_QUERY",
-      "query must be text of at most 200 characters."
+      "query must be text of at most 200 characters.",
     );
   }
-
-  if (
-    mode === "find" &&
-    !query.trim()
-  ) {
+  if (mode === "find" && !query.trim()) {
     throw new ApiError(
       400,
       "QUERY_REQUIRED",
-      "query is required in find mode."
+      "query is required in find mode.",
     );
   }
-
-  if (
-    typeof language !== "string" ||
-    !["en", "ne"].includes(language)
-  ) {
-    throw new ApiError(
-      400,
-      "INVALID_LANGUAGE",
-      "language must be en or ne."
-    );
+  if (typeof language !== "string" || !["en", "ne"].includes(language)) {
+    throw new ApiError(400, "INVALID_LANGUAGE", "language must be en or ne.");
   }
-
-  return {
-    mode,
-    query: query.trim(),
-    language,
-  };
+  return { mode, query: query.trim(), language };
 }
 
-export default function validateAnalyze(
-  req,
-  res,
-  next
-) {
-  if (
-    !req.file?.buffer?.length
-  ) {
+export default function validateAnalyze(req, res, next) {
+  if (!req.file?.buffer?.length) {
     throw new ApiError(
       400,
       "IMAGE_REQUIRED",
-      "Upload one image using the image field."
+      "Upload one image using the image field.",
     );
   }
-
-  const fields =
-    validateAnalysisFields(
-      req.body
-    );
-
-  const saveHistory =
-    req.body.saveHistory ??
-    "true";
-
-  if (
-    !["true", "false"].includes(
-      saveHistory
-    )
-  ) {
+  const fields = validateAnalysisFields(req.body);
+  const saveHistory = req.body.saveHistory ?? "true";
+  if (!["true", "false"].includes(saveHistory)) {
     throw new ApiError(
       400,
       "INVALID_SAVE_HISTORY",
-      "saveHistory must be true or false."
+      "saveHistory must be true or false.",
     );
   }
 
-  const {
-    userId,
-    journeyId,
-  } = req.body;
+  const { userId, journeyId } = req.body;
 
-  let normalizedUserId =
-    null;
-
-  let normalizedJourneyId =
-    null;
-
-  // userId is OPTIONAL.
-  // Only validate it when provided.
-  if (
-    typeof userId === "string" &&
-    userId.trim()
-  ) {
-    normalizedUserId =
-      userId.trim();
-
-    requireObjectId(
-      normalizedUserId
-    );
+  // userId and journeyId are OPTIONAL - Netra supports anonymous use.
+  // When provided, they must still be well-formed Mongo ids.
+  let normalizedUserId = null;
+  if (typeof userId === "string" && userId.trim()) {
+    normalizedUserId = userId.trim();
+    requireObjectId(normalizedUserId);
   }
 
-  // journeyId is also OPTIONAL.
-  if (
-    typeof journeyId ===
-      "string" &&
-    journeyId.trim()
-  ) {
-    normalizedJourneyId =
-      journeyId.trim();
-
-    requireObjectId(
-      normalizedJourneyId
-    );
+  let normalizedJourneyId = null;
+  if (typeof journeyId === "string" && journeyId.trim()) {
+    normalizedJourneyId = journeyId.trim();
+    requireObjectId(normalizedJourneyId);
   }
 
   req.analysis = {
     ...fields,
-
-    saveHistory:
-      saveHistory === "true",
-
-    userId:
-      normalizedUserId,
-
-    journeyId:
-      normalizedJourneyId,
+    saveHistory: saveHistory === "true",
+    userId: normalizedUserId,
+    journeyId: normalizedJourneyId,
   };
-
   next();
 }
