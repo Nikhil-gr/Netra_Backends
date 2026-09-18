@@ -35,7 +35,7 @@ Real analysis requires a working Gemini key and internet access.
 | --- | --- |
 | `PORT` | `5000` |
 | `GEMINI_API_KEY` | Required for analysis |
-| `GEMINI_MODEL` | `gemini-2.5-flash-lite`; must support image input and structured JSON |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite`; must support image input and structured JSON |
 | `MONGODB_URI` | Example: `mongodb://127.0.0.1:27017/netra`; empty disables history |
 | `CLOUDINARY_CLOUD_NAME` | Required to store images with saved history |
 | `CLOUDINARY_API_KEY` | Cloudinary API key |
