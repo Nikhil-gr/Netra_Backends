@@ -4,6 +4,8 @@ import { validateAnalysisFields } from "../middleware/validateAnalyze.js";
 import { validateResult } from "../services/geminiService.js";
 import { MODES } from "../utils/buildPrompt.js";
 import { ApiError, successResponse } from "../utils/apiResponse.js";
+import { requireObjectId } from '../utils/crudGuards.js';
+import { deleteImage } from '../services/cloudinaryService.js';
 
 function requireDatabase() {
   if (!isDatabaseConnected()) {
@@ -45,7 +47,9 @@ export async function getHistory(req, res) {
   }
   requireDatabase();
   try {
-    const items = await History.find(mode ? { mode } : {})
+    const filter = { userId: req.user.id };
+    if (mode) filter.mode = mode;
+    const items = await History.find(filter)
       .sort({ createdAt: -1, _id: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
@@ -94,7 +98,7 @@ export async function createHistory(req, res) {
   if (fields.mode === "find") result.object = fields.query;
   requireDatabase();
   try {
-    const record = await History.create({ ...fields, result });
+    const record = await History.create({ ...fields, userId: req.user.id, result });
     return successResponse(res, record, 201);
   } catch {
     throw new ApiError(
@@ -103,4 +107,29 @@ export async function createHistory(req, res) {
       "History could not be saved. Please try again.",
     );
   }
+}
+
+async function cleanupImage(record) {
+  if (!record?.imagePublicId) return;
+  try { await deleteImage(record.imagePublicId); } catch { console.warn('Could not remove a Cloudinary history image.'); }
+}
+
+export async function deleteHistory(req, res) {
+  requireDatabase();
+  requireObjectId(req.params.id);
+  const record = await History.findById(req.params.id);
+  if (!record) throw new ApiError(404, 'HISTORY_NOT_FOUND', 'History record not found.');
+  if (!record.userId || String(record.userId) !== req.user.id) throw new ApiError(403, 'HISTORY_ACCESS_DENIED', 'This history record belongs to another user.');
+  await History.deleteOne({ _id: record._id });
+  await cleanupImage(record);
+  return successResponse(res, { deleted: true });
+}
+
+export async function clearHistory(req, res) {
+  requireDatabase();
+  const filter = { userId: req.user.id };
+  const records = await History.find(filter).select('_id imagePublicId').lean();
+  await History.deleteMany(filter);
+  await Promise.all(records.map(cleanupImage));
+  return successResponse(res, { deleted: true, count: records.length });
 }

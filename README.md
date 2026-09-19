@@ -54,6 +54,10 @@ a secure frontend context (HTTPS, or localhost on the same device).
 | POST | `/api/v1/analyze` | Analyze an image and optionally save the result |
 | GET | `/api/v1/history` | List saved results, newest first |
 | POST | `/api/v1/history` | Manually save a previous analysis result |
+| DELETE | `/api/v1/history/:id` | Delete one scoped history item |
+| POST | `/api/v1/sos/trigger` | Create an SOS event and return a dialable URI |
+| POST | `/api/v1/parental/pairing-code` | Create a short-lived child pairing code |
+| POST | `/api/v1/parental/link` | Claim a pairing code as a parent |
 
 Health returns exactly:
 
@@ -150,8 +154,12 @@ the result and returns HTTP 201 with `{ success: true, data: <saved record> }`.
 Do not manually save after automatic saving unless you want a duplicate.
 
 History routes return 503 if MongoDB is unavailable. If the initial connection
-fails, correct the URI/start MongoDB and restart the API. There is no auth or
-user model: history is shared by all clients of this hackathon backend.
+fails, correct the URI/start MongoDB and restart the API. Users are optional:
+anonymous analysis continues to work without signup. `GET /history` returns
+anonymous records only; `GET /history?userId=<id>` returns only that user's
+records. Use `DELETE /history/:id?userId=<id>` for a user item, or
+`DELETE /history?userId=<id>` / `DELETE /history?anonymous=true` to clear a
+safe, explicit history scope.
 
 ## Processing and errors
 
@@ -208,3 +216,84 @@ a missing object (200), missing find query (400), oversized image (413),
 unsupported file (415), and history with MongoDB connected/disconnected.
 Listen to real outputs before your demo; structural validation cannot verify
 the accuracy of what Gemini sees.
+
+## Authenticated family features
+
+Public image analysis and navigation remain available without login. History,
+settings, SOS, and parental routes require `Authorization: Bearer <token>`.
+Set `AUTH_TOKEN_SECRET` in `.env` to a random value of at least 32 characters.
+
+Register a parent and child together with `POST /api/v1/auth/register-family`:
+
+```json
+{
+  "parent": { "name": "Maya", "email": "maya@example.com", "password": "at-least-8-characters", "phone": "+9779812345678" },
+  "child": { "name": "Aarav", "email": "aarav@example.com", "password": "at-least-8-characters", "phone": "+9779812345679" }
+}
+```
+
+This automatically creates the parent-child link. Each account signs in through
+`POST /api/v1/auth/login` with `{ "email", "password" }` and receives a token.
+There is no pairing-code route in this flow. A signed-in child triggers SOS with
+`POST /api/v1/sos/trigger`; the backend snapshots the linked parent's required
+phone number and returns its `tel:` URI. The frontend starts the call.
+
+Private endpoints derive the caller from the token: `/history` accesses only the
+signed-in user's records, `/settings` accesses only their preferences, and
+parental endpoints authorize the signed-in parent or child through FamilyLink.
+For a signed-in child, `PUT /parental/location` needs only coordinates; for a
+signed-in parent, `GET /parental/children/:childId/history` returns linked child
+history when the link's `historyVisible` control is enabled.
+
+## Users, SOS, parental controls, and settings
+
+`POST /users` accepts `name`, `email`, optional `role` (`parent` or `child`),
+and optional `emergencyContacts`. Contacts use `{ name, relationship?, phone,
+isPrimary? }`; phone numbers are normalized to a dialable `+` form. One contact
+is primary (the first is made primary if none is supplied). A role can be set
+once but cannot be changed afterward.
+
+```json
+POST /api/v1/users
+{"name":"Aarav","email":"aarav@example.com","role":"child","emergencyContacts":[{"name":"Mom","relationship":"mother","phone":"+9779812345678","isPrimary":true}]}
+```
+
+SOS is an event record, not a server-side telephone call. `POST /sos/trigger`
+accepts `{ userId, location?: { latitude, longitude, accuracy? } }` and returns
+`{ eventId, contact, dialUri, location, status, triggeredAt }`. The frontend
+uses `dialUri` (for example, `window.location.href = data.dialUri`). Record
+client actions with `POST /sos/:id/dial-started` or `POST /sos/:id/cancel`, each
+with `{ userId }`. `GET /sos?userId=...&limit=20` returns only that user's SOS
+events.
+
+Pairing uses a six-digit code that expires in ten minutes; only its hash is
+stored. A child creates it with `POST /parental/pairing-code` and
+`{ childUserId }`. A parent claims it with `POST /parental/link` and
+`{ parentUserId, code }`. The response includes `linkId`, minimal parent and
+child summaries, and `{ trackingEnabled, historyVisible, sosVisible }`.
+
+| Method | Endpoint | Contract |
+| --- | --- | --- |
+| GET | `/parental/children?parentUserId=...` | Active child summaries only |
+| GET | `/parental/parents?childUserId=...` | Active parent summaries only |
+| DELETE | `/parental/links/:id?requesterUserId=...` | Either linked user revokes; `{ revoked: true }` |
+| PUT | `/parental/links/:id/controls` | `{ parentUserId, trackingEnabled?, historyVisible?, sosVisible? }` |
+| PUT | `/parental/location` | `{ childUserId, latitude, longitude, accuracy?, heading?, speed?, capturedAt? }`; upserts latest only |
+| GET | `/parental/children/:childId/location?parentUserId=...` | Linked parent gets latest location, or `location: null` |
+| GET | `/parental/children/:childId/sos?parentUserId=...` | Child SOS only if `sosVisible` |
+| GET | `/parental/children/:childId/history?parentUserId=...` | Child history only if `historyVisible` |
+
+Settings use canonical `language`, `speechRate` (0.5–2), `autoSpeak`, and
+`vibrationEnabled`. Legacy `voiceEnabled` is accepted as an alias and is kept
+equal to `autoSpeak` in responses. Use `GET /settings/user/:userId` and
+`PUT /settings/user/:userId` (upsert) for a user's preferences.
+
+### MVP limitations
+
+There is deliberately no authentication/JWT system in this hackathon backend.
+User IDs in requests are demo-level identification, not production-grade
+authorization. Production must add real authentication and authorization before
+using family location or SOS features. A web browser/device must submit child
+location; background tracking can stop when it is closed, suspended, locked, or
+loses location permission. Location writes are rate-limited and only the latest
+location per child is stored.

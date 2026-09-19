@@ -3,6 +3,11 @@ import { MODES } from "../utils/buildPrompt.js";
 
 const historySchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
     mode: { type: String, enum: MODES, required: true },
     query: { type: String, default: "", maxlength: 200 },
     language: { type: String, enum: ["en", "ne"], default: "en" },
@@ -18,5 +23,6 @@ const historySchema = new mongoose.Schema(
 );
 
 historySchema.index({ createdAt: -1, _id: -1 });
+historySchema.index({ userId: 1, createdAt: -1, _id: -1 });
 
 export default mongoose.model("History", historySchema);

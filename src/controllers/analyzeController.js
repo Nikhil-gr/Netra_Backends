@@ -7,7 +7,8 @@ import { successResponse } from "../utils/apiResponse.js";
 import { deleteImage, uploadImage } from "../services/cloudinaryService.js";
 
 export default async function analyzeController(req, res) {
-  const { mode, query, language, saveHistory, userId, journeyId } = req.analysis;
+  const { mode, query, language, saveHistory, journeyId } = req.analysis;
+  const userId = req.user?.id ?? null;
   let image;
   try {
     image = await processImage(req.file.buffer);
@@ -27,12 +28,13 @@ export default async function analyzeController(req, res) {
     };
 
     // Save general history only when explicitly requested.
-    if (saveHistory) {
+    if (saveHistory && userId) {
       if (isDatabaseConnected()) {
         let cloudImage;
         try {
           cloudImage = await uploadImage(image);
           const record = await History.create({
+            userId: userId || null,
             mode,
             query,
             language,
@@ -61,7 +63,7 @@ export default async function analyzeController(req, res) {
         data.historyWarning =
           "Analysis succeeded, but the history database is unavailable.";
       }
-    }
+    } else if (saveHistory) data.historyWarning = "Sign in to save history.";
 
     // Only create a user-linked VisionAnalysis when a real userId was supplied.
     if (mode === "describe" && userId) {

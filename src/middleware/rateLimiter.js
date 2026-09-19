@@ -64,3 +64,27 @@ export const crudLimiter = rateLimit({
   legacyHeaders: false,
   handler: (req, res) => errorResponse(res, 429, 'RATE_LIMITED', 'Too many requests. Try again in a minute.'),
 });
+
+export const sosLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => errorResponse(res, 429, 'SOS_RATE_LIMITED', 'Too many SOS triggers. Try again in a minute.'),
+});
+
+export const parentalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => errorResponse(res, 429, 'RATE_LIMITED', 'Too many parental requests. Try again in a minute.'),
+});
+
+export const trackingLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => errorResponse(res, 429, 'TRACKING_RATE_LIMITED', 'Too many location updates. Try again in a minute.'),
+});

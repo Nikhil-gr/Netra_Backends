@@ -3,11 +3,13 @@ import analyzeController from "../controllers/analyzeController.js";
 import uploadImage from "../middleware/upload.js";
 import validateAnalyze from "../middleware/validateAnalyze.js";
 import { analyzeLimiter } from "../middleware/rateLimiter.js";
+import { optionalAuth } from '../middleware/auth.js';
 
 const router = Router();
 router.post(
   "/",
   analyzeLimiter,
+  optionalAuth,
   uploadImage,
   validateAnalyze,
   analyzeController,
